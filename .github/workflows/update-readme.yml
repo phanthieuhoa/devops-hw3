@@ -1,0 +1,63 @@
+name: Update README
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update README
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          path = Path("README.md")
+          content = path.read_text()
+
+          start = "<!-- AUTO-UPDATE-START -->"
+          end = "<!-- AUTO-UPDATE-END -->"
+
+          timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+          new_section = (
+              f"{start}\n"
+              f"Last automated update: {timestamp}\n"
+              f"{end}"
+          )
+
+          start_index = content.index(start)
+          end_index = content.index(end) + len(end)
+
+          content = (
+              content[:start_index]
+              + new_section
+              + content[end_index:]
+          )
+
+          path.write_text(content)
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add README.md
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update README automatically"
+            git push
+          fi
+        env:
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
